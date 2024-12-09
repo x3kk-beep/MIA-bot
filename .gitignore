@@ -1,0 +1,15 @@
+# Node.js modules
+/node_modules/
+
+# Environment variable file
+.env
+
+# Log files
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Last activity data (optional)
+lastActivity.json
