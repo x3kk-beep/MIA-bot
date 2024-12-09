@@ -7,26 +7,26 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.GuildMembers,  
+        GatewayIntentBits.GuildMembers,
     ],
 });
-
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const AFK_ROLE_NAME = 'MIA';
 const ON_LEAVE_CHANNEL_NAME = 'on-leave-notice';
 const GAME_CATEGORIES = [
+    'ECHOES OF INTERACTION',
+    'THRONE & LIBERTY VOICE',
     'THRONE & LIBERTY',
     'APEX LEGENDS',
     'COUNTER-STRIKE',
     'ONCE HUMAN',
     'VALORANT',
     'LEAGUE OF LEGENDS',
-    'PATH OF EXILE 2'
+    'PATH OF EXILE 2',
 ];
 
-const INACTIVE_PERIOD = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
-const CHECK_INTERVAL = 24 * 60 * 60 * 1000; // Check every 24 hours
+const INACTIVE_PERIOD = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 // File to store last activity
 const activityFile = './lastActivity.json';
@@ -34,23 +34,35 @@ let lastActivity = {};
 
 // Load last activity data from file
 if (fs.existsSync(activityFile)) {
+    console.log('Loading last activity data...');
     lastActivity = JSON.parse(fs.readFileSync(activityFile, 'utf8'));
+} else {
+    console.log('No last activity file found. Creating a new one...');
+    saveActivity();
 }
 
 // Save activity data to file
 function saveActivity() {
-    fs.writeFileSync(activityFile, JSON.stringify(lastActivity, null, 2));
+    try {
+        fs.writeFileSync(activityFile, JSON.stringify(lastActivity, null, 2));
+        console.log('Activity file updated successfully:', lastActivity);
+    } catch (error) {
+        console.error('Failed to save activity:', error);
+    }
 }
 
 // Update user activity
 function updateActivity(userId) {
+    console.log(`Updating activity for user: ${userId}`);
     lastActivity[userId] = Date.now();
     saveActivity();
 }
 
 // Check if a channel is part of a game-specific category
 function isInGameCategory(channel) {
-    return channel.parent && GAME_CATEGORIES.includes(channel.parent.name);
+    const isValid = channel.parent && GAME_CATEGORIES.includes(channel.parent.name);
+    console.log(`Checking channel: ${channel.name}, isValid: ${isValid}`);
+    return isValid;
 }
 
 // Check inactivity and assign AFK role
@@ -85,7 +97,7 @@ async function checkInactivity() {
         if (Date.now() - lastSeen > INACTIVE_PERIOD) {
             await member.roles.add(afkRole);
             await member.send(
-                'You have been marked as AFK due to 5 days of inactivity. '
+                'You have been marked as MIA due to 7 days of inactivity. '
                 + 'Send a message in any game channel or join a voice channel to remove this status.'
             );
         }
@@ -95,7 +107,7 @@ async function checkInactivity() {
 // Event: Bot ready
 client.on('ready', () => {
     console.log(`${client.user.tag} is online!`);
-    setInterval(checkInactivity, CHECK_INTERVAL);
+    checkInactivity(); // Run immediately on startup
 });
 
 // Event: Message sent
@@ -109,8 +121,11 @@ client.on('messageCreate', message => {
 
 // Event: Voice state update
 client.on('voiceStateUpdate', (oldState, newState) => {
-    if (newState.channel && isInGameCategory(newState.channel)) {
-        updateActivity(newState.member.id);
+    if (newState.channel) {
+        console.log(`User joined channel: ${newState.channel.name}`);
+        if (isInGameCategory(newState.channel)) {
+            updateActivity(newState.member.id);
+        }
     }
 });
 
